@@ -75,6 +75,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .primary-button { display: inline-flex; align-items: center; justify-content: center; gap: 28px; }
 .primary-button span { font-size: 18px; }
 .secondary-button { min-height: 46px; padding: 0 20px; border: 1px solid var(--ink); background: transparent; cursor: pointer; }
+.data-transfer-section { display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; padding: 30px 0 8px; border-top: 1px solid var(--line); }
+.data-transfer-copy { max-width: 560px; }
+.data-transfer-copy > p { margin: 0 0 7px; color: var(--accent-dark); font-size: 11px; font-weight: 700; letter-spacing: .12em; }
+.data-transfer-copy h2 { margin: 0 0 8px; font-family: var(--serif); font-size: clamp(24px, 3vw, 38px); font-weight: 500; }
+.data-transfer-copy > span { color: var(--muted); font-size: 13px; line-height: 1.7; }
+.data-transfer-actions { display: flex; flex: 0 0 auto; gap: 10px; }
 .text-button { border: 0; background: none; border-bottom: 1px solid var(--ink); padding: 4px 0; cursor: pointer; }
 .theme-menu { position: relative; margin-right: 10px; }
 .theme-trigger { min-height: 42px; display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--white); padding: 0 12px; cursor: pointer; font-size: 12px; }
@@ -265,6 +271,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   .category-grid { gap: 8px; }.category-tile { min-height: 190px; padding: 16px; }.category-letter { font-size: 72px; }.category-tile > span:last-child { left: 15px; right: 15px; bottom: 14px; }.category-tile strong { font-size: 18px; }
   .status-row { display: block; }.status-row button { width: 100%; min-height: 82px; border-right: 0; border-bottom: 1px solid var(--line); grid-template-columns: 52px 1fr 20px; padding: 0 8px; }.status-row button:last-child { border-bottom: 0; }.status-row strong { font-size: 29px; }
   .recent-section { padding-bottom: 40px; }.item-grid { gap: 20px 9px; }.card-content { padding-top: 11px; }.card-content h3 { font-size: 15px; margin-top: 5px; }.card-meta { align-items: flex-start; flex-direction: column; }.card-meta b { text-align: left; }.card-tags span:nth-child(n+3) { display: none; }.card-image > span { font-size: 62px; }
+  .data-transfer-section { display: block; padding-top: 24px; }.data-transfer-actions { display: grid; grid-template-columns: 1fr 1fr; margin-top: 18px; }
   .items-page { padding: 42px 0 40px; }.list-title h1 { font-size: 38px; }.filter-bar { display: grid; grid-template-columns: 1fr 1fr; padding: 14px; }.filter-bar .search-field { grid-column: 1 / -1; }.filter-bar label { min-width: 0; }.filter-bar label:nth-of-type(4) { grid-column: 1 / -1; }.clear-filter { grid-column: 1 / -1; }
   .form-page { width: 100%; padding-top: 28px; }.form-intro { width: calc(100% - 28px); margin-left: auto; margin-right: auto; }.back-button { margin-bottom: 27px; }.form-intro h1 { font-size: 37px; }.form-intro > span { font-size: 12px; }.draft-banner { margin: 0 14px 10px; }
   .form-card { border-left: 0; border-right: 0; padding: 25px 18px; margin-bottom: 9px; }.form-section-title { margin-bottom: 26px; }.form-section-title h2 { font-size: 20px; }.category-choices { gap: 6px; }.category-choices button { min-height: 70px; }.status-choices { grid-template-columns: 1fr; gap: 6px; }.status-choices button { min-height: 46px; }.balance-quick { margin-left: -8px; margin-right: -8px; padding: 17px 14px; }.balance-quick-heading { display: block; }.balance-quick-heading span { display: block; margin-top: 4px; }.two-columns, .purchase-fields, .purchase-fields.identity-purchase { grid-template-columns: 1fr; gap: 0; }.balance-quick .text-field + .text-field { margin-top: 15px; }.image-thumb, .add-image { flex-basis: 118px; height: 142px; }.tag-list { gap: 6px; }.tag-chip { min-height: 38px; }.tag-create-row { margin-top: -8px; padding: 12px; }.tag-create-row > div { display: block; }.tag-create-row input { border-right: 1px solid var(--line-strong); }.tag-create-row button { width: 100%; height: 42px; margin-top: 7px; }.compact-date { max-width: none; }

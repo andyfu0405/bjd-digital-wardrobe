@@ -1,4 +1,4 @@
-const CACHE_NAME = "bjd-wardrobe-v3";
+const CACHE_NAME = "bjd-wardrobe-v4";
 const APP_SHELL = ["/", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png", "/apple-touch-icon.png"];
 
 self.addEventListener("install", (event) => {

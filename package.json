@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "vinext dev",
     "build": "vinext build",
+    "build:edgeone": "node scripts/build-edgeone.mjs",
     "start": "vinext start",
     "test": "node --test tests/*.test.mjs",
     "typecheck": "tsc --noEmit --incremental false",

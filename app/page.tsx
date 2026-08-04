@@ -72,6 +72,19 @@ type FormState = {
   accessoryTypeOther: string;
 };
 
+type WardrobeBackup = {
+  format: "bjd-digital-wardrobe";
+  version: 1;
+  exportedAt: string;
+  items: Item[];
+  draft?: FormState;
+  sizeTags: string[];
+  styleTags: string[];
+  deletedSizeTags: string[];
+  deletedStyleTags: string[];
+  theme: ThemeId;
+};
+
 const CATEGORY: Record<Category, { label: string; short: string }> = {
   clothing: { label: "衣物", short: "衣" },
   body: { label: "娃体", short: "体" },
@@ -311,6 +324,7 @@ export default function Home() {
   const [toast, setToast] = useState("");
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const backupFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if ("serviceWorker" in navigator) {
@@ -611,6 +625,72 @@ export default function Home() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  function exportWardrobe() {
+    const backup: WardrobeBackup = {
+      format: "bjd-digital-wardrobe",
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      items,
+      draft: draftDirty && !editingId ? form : undefined,
+      sizeTags: customSizeTags,
+      styleTags: customStyleTags,
+      deletedSizeTags,
+      deletedStyleTags,
+      theme,
+    };
+    const blob = new Blob([JSON.stringify(backup)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `BJD衣橱备份-${new Date().toLocaleDateString("zh-CN").replaceAll("/", "-")}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    setToast("衣橱备份已导出");
+  }
+
+  async function importWardrobe(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    try {
+      const parsed = JSON.parse(await file.text()) as Partial<WardrobeBackup>;
+      if (parsed.format !== "bjd-digital-wardrobe" || parsed.version !== 1 || !Array.isArray(parsed.items)) {
+        throw new Error("invalid backup");
+      }
+      if (items.length && !window.confirm(`导入将替换当前的 ${items.length} 件藏品，确认继续吗？`)) return;
+      const nextTheme = THEMES.some((item) => item.id === parsed.theme) ? parsed.theme! : "cobalt";
+      const nextDraft = parsed.draft;
+      setItems(parsed.items);
+      setCustomSizeTags(parsed.sizeTags ?? []);
+      setCustomStyleTags(parsed.styleTags ?? []);
+      setDeletedSizeTags(parsed.deletedSizeTags ?? []);
+      setDeletedStyleTags(parsed.deletedStyleTags ?? []);
+      setTheme(nextTheme);
+      if (nextDraft) {
+        setForm({ ...emptyForm(nextDraft.category, nextDraft.status), ...nextDraft });
+        setDraftDirty(true);
+      } else {
+        setForm(emptyForm());
+        setDraftDirty(false);
+      }
+      await Promise.all([
+        writeLocal("items", parsed.items),
+        writeLocal("draft", nextDraft),
+        writeLocal("size-tags", parsed.sizeTags ?? []),
+        writeLocal("style-tags", parsed.styleTags ?? []),
+        writeLocal("deleted-size-tags", parsed.deletedSizeTags ?? []),
+        writeLocal("deleted-style-tags", parsed.deletedStyleTags ?? []),
+        writeLocal("theme", nextTheme),
+      ]);
+      setSelectedId(undefined);
+      setEditingId(undefined);
+      setView("home");
+      setToast(`已导入 ${parsed.items.length} 件藏品`);
+    } catch {
+      setToast("无法导入：请选择本应用导出的备份文件");
+    }
+  }
+
   const sizeOptions = [...customSizeTags, ...SIZE_TAGS].filter((tag) => !deletedSizeTags.includes(tag));
   const styleOptions = [...customStyleTags, ...STYLE_TAGS].filter((tag) => !deletedStyleTags.includes(tag));
   const priceOnlyField = <label className="text-field compact-date"><span>价格 <small>人民币</small></span><div className="price-input"><b>¥</b><input type="number" min="0" inputMode="decimal" value={form.price} onChange={(event) => update("price", event.target.value)} placeholder="0.00" /></div></label>;
@@ -698,6 +778,15 @@ export default function Home() {
           <section className="section-block recent-section">
             <div className="section-heading"><div><p>RECENTLY ADDED</p><h2>最近添加</h2></div><button onClick={() => showList()}>查看全部 →</button></div>
             <ItemGrid items={items.slice(0, 4)} onOpen={(item) => { setSelectedId(item.id); setView("detail"); }} />
+          </section>
+
+          <section className="section-block data-transfer-section">
+            <div className="data-transfer-copy"><p>数据与迁移</p><h2>把衣橱带到新网址</h2><span>备份文件包含藏品、图片、标签和未完成草稿，只保存在你选择的位置。</span></div>
+            <div className="data-transfer-actions">
+              <button type="button" className="secondary-button" onClick={exportWardrobe}>导出衣橱</button>
+              <button type="button" className="primary-button" onClick={() => backupFileRef.current?.click()}>导入衣橱</button>
+              <input ref={backupFileRef} className="visually-hidden" type="file" accept="application/json,.json" onChange={importWardrobe} />
+            </div>
           </section>
         </div>
       )}
