@@ -7,6 +7,18 @@ export const metadata: Metadata = {
   description: "为 BJD 玩家设计的轻量数字衣橱，快速记录衣物、娃体、娃头与配件。",
   applicationName: "BJD Wardrobe",
   manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "BJD 衣橱",
+    statusBarStyle: "default",
+  },
+  icons: {
+    icon: [
+      { url: "/app-icon.svg", type: "image/svg+xml" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
   openGraph: {
     title: "BJD Digital Wardrobe",
     description: "把喜欢的，好好收藏。",
@@ -23,7 +35,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f3f0e9",
+  themeColor: "#ffffff",
   width: "device-width",
   initialScale: 1,
 };

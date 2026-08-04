@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#ffffff"/>
+  <rect x="44" y="44" width="424" height="424" fill="#edf5fb" stroke="#2f4f91" stroke-width="8"/>
+  <rect x="68" y="68" width="376" height="376" fill="#ffffff" stroke="#c7d7e1" stroke-width="2"/>
+  <text x="256" y="318" text-anchor="middle" fill="#1b1f23" font-family="Georgia, serif" font-size="224" font-style="italic">W</text>
+  <text x="256" y="388" text-anchor="middle" fill="#2f4f91" font-family="Arial, sans-serif" font-size="28" letter-spacing="9">BJD</text>
+</svg>

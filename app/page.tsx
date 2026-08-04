@@ -11,6 +11,7 @@ type Status =
   | "paid_waiting_receipt"
   | "received";
 type View = "home" | "items" | "form" | "detail";
+type ThemeId = "cobalt" | "berry" | "cloud" | "mint";
 
 type ItemImage = { id: string; dataUrl: string };
 
@@ -24,6 +25,7 @@ type Item = {
   price?: number;
   sizeTags: string[];
   styleTags: string[];
+  purchaseChannel?: string;
   brandOrShop?: string;
   notes?: string;
   balanceAmount?: number;
@@ -38,6 +40,7 @@ type Item = {
   sculptName?: string;
   skinTone?: string;
   accessoryType?: string;
+  accessoryTypeOther?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -51,6 +54,7 @@ type FormState = {
   price: string;
   sizeTags: string[];
   styleTags: string[];
+  purchaseChannel: string;
   brandOrShop: string;
   notes: string;
   balanceAmount: string;
@@ -65,6 +69,7 @@ type FormState = {
   sculptName: string;
   skinTone: string;
   accessoryType: string;
+  accessoryTypeOther: string;
 };
 
 const CATEGORY: Record<Category, { label: string; short: string }> = {
@@ -84,6 +89,13 @@ const STATUS: Record<Status, string> = {
 const SIZE_TAGS = ["三分", "四分", "六分", "叔体", "幼体", "70cm"];
 const STYLE_TAGS = ["日常", "学院", "古典", "优雅", "亚文化", "暗黑", "华丽"];
 
+const THEMES: { id: ThemeId; label: string; description: string }[] = [
+  { id: "cobalt", label: "雾蓝", description: "清透蓝白" },
+  { id: "berry", label: "莓果", description: "柔和莓粉" },
+  { id: "cloud", label: "云灰", description: "冷静灰调" },
+  { id: "mint", label: "薄荷", description: "清爽薄荷" },
+];
+
 const emptyForm = (category: Category = "clothing", status: Status = "received"): FormState => ({
   name: "",
   category,
@@ -93,6 +105,7 @@ const emptyForm = (category: Category = "clothing", status: Status = "received")
   price: "",
   sizeTags: [],
   styleTags: [],
+  purchaseChannel: "",
   brandOrShop: "",
   notes: "",
   balanceAmount: "",
@@ -107,6 +120,7 @@ const emptyForm = (category: Category = "clothing", status: Status = "received")
   sculptName: "",
   skinTone: "",
   accessoryType: "",
+  accessoryTypeOther: "",
 });
 
 const toForm = (item: Item): FormState => ({
@@ -117,6 +131,7 @@ const toForm = (item: Item): FormState => ({
   price: item.price?.toString() ?? "",
   sizeTags: item.sizeTags,
   styleTags: item.styleTags,
+  purchaseChannel: item.purchaseChannel ?? "",
   brandOrShop: item.brandOrShop ?? "",
   notes: item.notes ?? "",
   balanceAmount: item.balanceAmount?.toString() ?? "",
@@ -131,6 +146,7 @@ const toForm = (item: Item): FormState => ({
   sculptName: item.sculptName ?? "",
   skinTone: item.skinTone ?? "",
   accessoryType: item.accessoryType ?? "",
+  accessoryTypeOther: item.accessoryTypeOther ?? "",
 });
 
 function openDb(): Promise<IDBDatabase> {
@@ -278,11 +294,14 @@ export default function Home() {
   const [draftDirty, setDraftDirty] = useState(false);
   const [draftRestored, setDraftRestored] = useState(false);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
-  const [showOptional, setShowOptional] = useState(false);
-  const [tagInput, setTagInput] = useState("");
-  const [tagMode, setTagMode] = useState<"size" | "style">("size");
+  const [theme, setTheme] = useState<ThemeId>("cobalt");
+  const [themeMenuOpen, setThemeMenuOpen] = useState(false);
+  const [sizeTagInput, setSizeTagInput] = useState("");
+  const [styleTagInput, setStyleTagInput] = useState("");
   const [customSizeTags, setCustomSizeTags] = useState<string[]>([]);
   const [customStyleTags, setCustomStyleTags] = useState<string[]>([]);
+  const [deletedSizeTags, setDeletedSizeTags] = useState<string[]>([]);
+  const [deletedStyleTags, setDeletedStyleTags] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<Category | "all">("all");
   const [statusFilter, setStatusFilter] = useState<Status | "all">("all");
@@ -300,18 +319,24 @@ export default function Home() {
       readLocal<FormState>("draft"),
       readLocal<string[]>("size-tags"),
       readLocal<string[]>("style-tags"),
+      readLocal<string[]>("deleted-size-tags"),
+      readLocal<string[]>("deleted-style-tags"),
+      readLocal<ThemeId>("theme"),
     ])
-      .then(([savedItems, draft, sizes, styles]) => {
+      .then(([savedItems, draft, sizes, styles, deletedSizes, deletedStyles, savedTheme]) => {
         const initial = savedItems ?? sampleItems();
         setItems(initial);
         if (!savedItems) writeLocal("items", initial);
         if (draft) {
-          setForm(draft);
+          setForm({ ...emptyForm(draft.category, draft.status), ...draft });
           setDraftDirty(true);
           setDraftRestored(true);
         }
         setCustomSizeTags(sizes ?? []);
         setCustomStyleTags(styles ?? []);
+        setDeletedSizeTags(deletedSizes ?? []);
+        setDeletedStyleTags(deletedStyles ?? []);
+        if (savedTheme && THEMES.some((item) => item.id === savedTheme)) setTheme(savedTheme);
       })
       .finally(() => setHydrated(true));
   }, []);
@@ -386,7 +411,7 @@ export default function Home() {
       const copied = emptyForm(source.category, "received");
       copied.sizeTags = source.sizeTags;
       copied.styleTags = source.styleTags;
-      copied.brandOrShop = source.brandOrShop ?? "";
+      if (source.category !== "body" && source.category !== "head") copied.brandOrShop = source.brandOrShop ?? "";
       copied.clothingMode = source.clothingMode ?? "single";
       copied.setCount = source.setCount?.toString() ?? "";
       copied.setDescription = source.setDescription ?? "";
@@ -395,6 +420,7 @@ export default function Home() {
       copied.sculptName = source.sculptName ?? "";
       copied.skinTone = source.skinTone ?? "";
       copied.accessoryType = source.accessoryType ?? "";
+      copied.accessoryTypeOther = source.accessoryTypeOther ?? "";
       setForm(copied);
       setDraftDirty(true);
     } else if (!options?.preserve) {
@@ -402,7 +428,6 @@ export default function Home() {
       setDraftDirty(false);
     }
     setEditingId(undefined);
-    setShowOptional(false);
     setView("form");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -410,7 +435,6 @@ export default function Home() {
   function startEdit(item: Item) {
     setForm(toForm(item));
     setEditingId(item.id);
-    setShowOptional(false);
     setView("form");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -436,14 +460,24 @@ export default function Home() {
     update(key, values.includes(tag) ? values.filter((value) => value !== tag) : [...values, tag]);
   }
 
-  function createTag() {
-    const clean = tagInput.trim();
+  function createTag(type: "size" | "style", input: string) {
+    const clean = input.trim();
     if (!clean) return;
-    const known = tagMode === "size" ? [...SIZE_TAGS, ...customSizeTags] : [...STYLE_TAGS, ...customStyleTags];
+    const known = type === "size" ? [...SIZE_TAGS, ...customSizeTags] : [...STYLE_TAGS, ...customStyleTags];
     const existing = known.find((tag) => tag.toLocaleLowerCase() === clean.toLocaleLowerCase());
     const value = existing ?? clean;
+    if (existing && type === "size" && deletedSizeTags.some((tag) => tag.toLocaleLowerCase() === existing.toLocaleLowerCase())) {
+      const next = deletedSizeTags.filter((tag) => tag.toLocaleLowerCase() !== existing.toLocaleLowerCase());
+      setDeletedSizeTags(next);
+      writeLocal("deleted-size-tags", next);
+    }
+    if (existing && type === "style" && deletedStyleTags.some((tag) => tag.toLocaleLowerCase() === existing.toLocaleLowerCase())) {
+      const next = deletedStyleTags.filter((tag) => tag.toLocaleLowerCase() !== existing.toLocaleLowerCase());
+      setDeletedStyleTags(next);
+      writeLocal("deleted-style-tags", next);
+    }
     if (!existing) {
-      if (tagMode === "size") {
+      if (type === "size") {
         const next = [clean, ...customSizeTags];
         setCustomSizeTags(next);
         writeLocal("size-tags", next);
@@ -453,15 +487,50 @@ export default function Home() {
         writeLocal("style-tags", next);
       }
     }
-    toggleTag(tagMode, value);
-    setTagInput("");
+    toggleTag(type, value);
+    if (type === "size") setSizeTagInput("");
+    else setStyleTagInput("");
+  }
+
+  function deleteTag(type: "size" | "style", tag: string) {
+    if (type === "size") {
+      if (customSizeTags.includes(tag)) {
+        const next = customSizeTags.filter((value) => value !== tag);
+        setCustomSizeTags(next);
+        writeLocal("size-tags", next);
+      } else {
+        const next = Array.from(new Set([tag, ...deletedSizeTags]));
+        setDeletedSizeTags(next);
+        writeLocal("deleted-size-tags", next);
+      }
+      update("sizeTags", form.sizeTags.filter((value) => value !== tag));
+    } else {
+      if (customStyleTags.includes(tag)) {
+        const next = customStyleTags.filter((value) => value !== tag);
+        setCustomStyleTags(next);
+        writeLocal("style-tags", next);
+      } else {
+        const next = Array.from(new Set([tag, ...deletedStyleTags]));
+        setDeletedStyleTags(next);
+        writeLocal("deleted-style-tags", next);
+      }
+      update("styleTags", form.styleTags.filter((value) => value !== tag));
+    }
+    setToast(`已删除标签“${tag}”`);
+  }
+
+  function selectTheme(next: ThemeId) {
+    setTheme(next);
+    setThemeMenuOpen(false);
+    writeLocal("theme", next);
   }
 
   function saveItem(continueAdding = false) {
     const now = new Date().toISOString();
     const existing = editingId ? items.find((item) => item.id === editingId) : undefined;
     const unnamedCount = items.filter((item) => item.category === form.category && item.name.startsWith(`未命名${CATEGORY[form.category].label}`)).length + 1;
-    const name = form.name.trim() || `未命名${CATEGORY[form.category].label} ${String(unnamedCount).padStart(2, "0")}`;
+    const identityName = form.category === "body" ? form.model.trim() : form.category === "head" ? form.sculptName.trim() : "";
+    const name = identityName || form.name.trim() || `未命名${CATEGORY[form.category].label} ${String(unnamedCount).padStart(2, "0")}`;
     const item: Item = {
       id: editingId ?? crypto.randomUUID(),
       name,
@@ -472,6 +541,7 @@ export default function Home() {
       price: numberValue(form.price),
       sizeTags: form.sizeTags,
       styleTags: form.styleTags,
+      purchaseChannel: form.purchaseChannel || undefined,
       brandOrShop: form.brandOrShop.trim() || undefined,
       notes: form.notes.trim() || undefined,
       balanceAmount: numberValue(form.balanceAmount),
@@ -486,6 +556,7 @@ export default function Home() {
       sculptName: form.sculptName.trim() || undefined,
       skinTone: form.skinTone.trim() || undefined,
       accessoryType: form.accessoryType || undefined,
+      accessoryTypeOther: form.accessoryTypeOther.trim() || undefined,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     };
@@ -500,7 +571,6 @@ export default function Home() {
       next.styleTags = form.styleTags;
       setForm(next);
       setEditingId(undefined);
-      setShowOptional(false);
       setView("form");
       window.scrollTo({ top: 0, behavior: "smooth" });
     } else {
@@ -526,12 +596,28 @@ export default function Home() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  const sizeOptions = [...customSizeTags, ...SIZE_TAGS].filter((tag) => !deletedSizeTags.includes(tag));
+  const styleOptions = [...customStyleTags, ...STYLE_TAGS].filter((tag) => !deletedStyleTags.includes(tag));
+  const nameAndPriceFields = <div className="two-columns">
+    <label className="text-field"><span>名称 <small>留空自动命名</small></span><input value={form.name} onChange={(event) => update("name", event.target.value)} placeholder="例如：雾蓝学院套装" /></label>
+    <label className="text-field"><span>价格 <small>人民币</small></span><div className="price-input"><b>¥</b><input type="number" min="0" inputMode="decimal" value={form.price} onChange={(event) => update("price", event.target.value)} placeholder="0.00" /></div></label>
+  </div>;
+  const priceOnlyField = <label className="text-field compact-date"><span>价格 <small>人民币</small></span><div className="price-input"><b>¥</b><input type="number" min="0" inputMode="decimal" value={form.price} onChange={(event) => update("price", event.target.value)} placeholder="0.00" /></div></label>;
+  const sizeFields = <>
+    <TagSelector title="尺寸" mode="size" form={form} options={sizeOptions} onToggle={toggleTag} onDelete={deleteTag} />
+    <TagCreateField label="添加尺寸标签" value={sizeTagInput} onChange={setSizeTagInput} onCreate={() => createTag("size", sizeTagInput)} />
+  </>;
+  const styleFields = <>
+    <TagSelector title="风格" mode="style" form={form} options={styleOptions} onToggle={toggleTag} onDelete={deleteTag} />
+    <TagCreateField label="输入自己的风格" value={styleTagInput} onChange={setStyleTagInput} onCreate={() => createTag("style", styleTagInput)} emphasized />
+  </>;
+
   if (!hydrated) {
     return <main className="loading-screen"><div className="loading-mark">W</div><p>正在打开你的数字衣橱…</p></main>;
   }
 
   return (
-    <main className="app-shell">
+    <main className="app-shell" data-theme={theme}>
       <header className="topbar">
         <button className="brand" onClick={() => setView("home")} aria-label="返回首页">
           <span className="brand-mark">W</span>
@@ -541,6 +627,15 @@ export default function Home() {
           <button className={view === "home" ? "active" : ""} onClick={() => setView("home")}>首页</button>
           <button className={view === "items" ? "active" : ""} onClick={() => showList()}>全部物品</button>
         </nav>
+        <div className="theme-menu">
+          <button className="theme-trigger" type="button" aria-expanded={themeMenuOpen} onClick={() => setThemeMenuOpen((value) => !value)}>
+            <span className={`theme-dot theme-dot-${theme}`}></span><span>配色</span>
+          </button>
+          {themeMenuOpen && <div className="theme-popover" aria-label="选择主题配色">
+            <strong>主题配色</strong>
+            {THEMES.map((item) => <button key={item.id} type="button" className={theme === item.id ? "selected" : ""} onClick={() => selectTheme(item.id)}><span className={`theme-preview theme-preview-${item.id}`}><i></i><i></i><i></i></span><span><b>{item.label}</b><small>{item.description}</small></span>{theme === item.id && <em>已选</em>}</button>)}
+          </div>}
+        </div>
         <button className="header-add" onClick={() => startNew({ preserve: draftDirty })}>＋ 添加物品</button>
       </header>
 
@@ -622,7 +717,7 @@ export default function Home() {
           {draftRestored && !editingId && <div className="draft-banner"><div><strong>已恢复上次的草稿</strong><span>你可以从离开的位置继续填写。</span></div><button onClick={() => { setForm(emptyForm()); setDraftDirty(false); setDraftRestored(false); writeLocal("draft", undefined); }}>舍弃草稿</button></div>}
 
           <div className="form-card">
-            <div className="form-section-title"><span>01</span><div><p>必要信息</p><h2>两步即可保存</h2></div><i>必填</i></div>
+            <div className="form-section-title"><div><h2>必要信息</h2><p>只需两步即可保存</p></div><i>必填</i></div>
             <div className="field-group">
               <label className="field-label">分类 <b>必填</b></label>
               <div className="choice-grid category-choices">
@@ -634,12 +729,13 @@ export default function Home() {
               <div className="status-choices">
                 {(Object.keys(STATUS) as Status[]).map((status) => <button key={status} type="button" className={form.status === status ? "selected" : ""} onClick={() => changeStatus(status)}><span></span>{STATUS[status]}</button>)}
               </div>
-              {form.status === "balance_due" && <p className="field-hint">尾款金额和截止日期为选填，可在下方“选择性信息”中补充。</p>}
+              {form.status === "balance_due" && <div className="balance-quick"><div className="balance-quick-heading"><strong>补款与出货</strong><span>全部选填，留空也可以保存</span></div><div className="two-columns"><label className="text-field"><span>需补尾款 <small>选填</small></span><div className="price-input"><b>¥</b><input type="number" min="0" inputMode="decimal" value={form.balanceAmount} onChange={(event) => update("balanceAmount", event.target.value)} placeholder="0.00" /></div></label><label className="text-field"><span>补款截止日期 <small>选填</small></span><input type="date" value={form.balanceDueDate} onChange={(event) => update("balanceDueDate", event.target.value)} /></label></div><label className="text-field shipping-field"><span>预计出货时间 <small>选填</small></span><input value={form.estimatedShipping} onChange={(event) => update("estimatedShipping", event.target.value)} placeholder="例如：2026 年 9 月 / 秋季" /></label></div>}
+              {(form.status === "paid_waiting_receipt" || form.status === "waiting_for_balance_notice") && <div className="balance-quick shipping-quick"><div className="balance-quick-heading"><strong>出货信息</strong><span>选填，之后也可以补充</span></div><label className="text-field shipping-field"><span>预计出货时间 <small>选填</small></span><input value={form.estimatedShipping} onChange={(event) => update("estimatedShipping", event.target.value)} placeholder="例如：2026 年 9 月 / 秋季" /></label></div>}
             </div>
           </div>
 
           <div className="form-card quick-card">
-            <div className="form-section-title"><span>02</span><div><p>顺手填写</p><h2>常用，但都可留空</h2></div><i>选填</i></div>
+            <div className="form-section-title"><div><h2>常用信息</h2><p>想填就填，之后也能补充</p></div><i>选填</i></div>
             <div className="image-picker">
               <div className="image-picker-heading"><label className="field-label">图片</label><small>第一张自动成为封面</small></div>
               <div className="image-strip">
@@ -648,32 +744,34 @@ export default function Home() {
               </div>
               <input ref={fileRef} className="visually-hidden" type="file" accept="image/*" capture={undefined} multiple onChange={handleImages} />
             </div>
-            <div className="two-columns">
-              <label className="text-field"><span>名称 <small>留空自动命名</small></span><input value={form.name} onChange={(event) => update("name", event.target.value)} placeholder={`例如：雾蓝学院套装`} /></label>
-              <label className="text-field"><span>价格 <small>人民币</small></span><div className="price-input"><b>¥</b><input type="number" min="0" inputMode="decimal" value={form.price} onChange={(event) => update("price", event.target.value)} placeholder="0.00" /></div></label>
-            </div>
-            <TagSelector title="尺寸" mode="size" form={form} options={[...customSizeTags, ...SIZE_TAGS]} onToggle={toggleTag} onOpen={() => setTagMode("size")} />
-            <TagSelector title="风格" mode="style" form={form} options={[...customStyleTags, ...STYLE_TAGS]} onToggle={toggleTag} onOpen={() => setTagMode("style")} />
-            <div className="tag-create-row">
-              <span>没有合适的{tagMode === "size" ? "尺寸" : "风格"}？</span>
-              <div><input value={tagInput} onChange={(event) => setTagInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); createTag(); } }} placeholder={`新建${tagMode === "size" ? "尺寸" : "风格"}标签`} /><button type="button" onClick={createTag}>创建并选中</button></div>
-            </div>
-          </div>
-
-          <div className={`form-card optional-card ${showOptional ? "open" : ""}`}>
-            <button className="optional-toggle" onClick={() => setShowOptional((value) => !value)} aria-expanded={showOptional}><div className="form-section-title"><span>03</span><div><p>选择性信息</p><h2>品牌、备注与详细资料</h2></div></div><strong>{showOptional ? "收起 −" : "展开 ＋"}</strong></button>
-            {showOptional && (
-              <div className="optional-content">
-                {form.status === "balance_due" && <div className="conditional-panel"><h3>补款信息</h3><p>均为选填，切换状态后仍会保留。</p><div className="two-columns"><label className="text-field"><span>需补尾款</span><div className="price-input"><b>¥</b><input type="number" min="0" value={form.balanceAmount} onChange={(event) => update("balanceAmount", event.target.value)} placeholder="0.00" /></div></label><label className="text-field"><span>补款截止日期</span><input type="date" value={form.balanceDueDate} onChange={(event) => update("balanceDueDate", event.target.value)} /></label></div><label className="text-field"><span>预计出货时间</span><input value={form.estimatedShipping} onChange={(event) => update("estimatedShipping", event.target.value)} placeholder="例如：2026 年 9 月 / 秋季" /></label></div>}
-                {form.status !== "balance_due" && form.status !== "received" && <div className="conditional-panel"><h3>购买进度</h3><label className="text-field"><span>预计出货时间</span><input value={form.estimatedShipping} onChange={(event) => update("estimatedShipping", event.target.value)} placeholder="例如：2026 年 9 月 / 秋季" /></label></div>}
-                {form.status === "received" && <div className="conditional-panel"><h3>收货信息</h3><label className="text-field"><span>收货日期</span><input type="date" value={form.receivedDate} onChange={(event) => update("receivedDate", event.target.value)} /></label></div>}
-                {form.category === "clothing" && <div className="conditional-panel"><h3>衣物资料</h3><div className="segmented"><button className={form.clothingMode === "single" ? "selected" : ""} onClick={() => update("clothingMode", "single")}>单件</button><button className={form.clothingMode === "set" ? "selected" : ""} onClick={() => update("clothingMode", "set")}>套装</button></div>{form.clothingMode === "set" && <><label className="text-field"><span>套装点数</span><input type="number" min="0" value={form.setCount} onChange={(event) => update("setCount", event.target.value)} placeholder="例如：5" /></label><label className="text-field"><span>套装内容</span><textarea value={form.setDescription} onChange={(event) => update("setDescription", event.target.value)} placeholder="例如：衬衫、半裙、领结、袜子" /></label></>}</div>}
-                {form.category === "body" && <div className="conditional-panel"><h3>娃体资料</h3><div className="two-columns"><label className="text-field"><span>娃社</span><input value={form.maker} onChange={(event) => update("maker", event.target.value)} /></label><label className="text-field"><span>型号</span><input value={form.model} onChange={(event) => update("model", event.target.value)} /></label></div><label className="text-field"><span>肤色</span><input value={form.skinTone} onChange={(event) => update("skinTone", event.target.value)} /></label></div>}
-                {form.category === "head" && <div className="conditional-panel"><h3>娃头资料</h3><div className="two-columns"><label className="text-field"><span>娃社</span><input value={form.maker} onChange={(event) => update("maker", event.target.value)} /></label><label className="text-field"><span>头雕名称</span><input value={form.sculptName} onChange={(event) => update("sculptName", event.target.value)} /></label></div><label className="text-field"><span>肤色</span><input value={form.skinTone} onChange={(event) => update("skinTone", event.target.value)} /></label></div>}
-                {form.category === "accessory" && <div className="conditional-panel"><h3>配件资料</h3><label className="text-field"><span>配件类型</span><select value={form.accessoryType} onChange={(event) => update("accessoryType", event.target.value)}><option value="">请选择</option>{["假发", "眼珠", "鞋", "首饰", "道具", "包", "其他"].map((value) => <option key={value}>{value}</option>)}</select></label></div>}
-                <div className="two-columns"><label className="text-field"><span>品牌或店铺</span><input value={form.brandOrShop} onChange={(event) => update("brandOrShop", event.target.value)} placeholder="娃社、工作室或店铺" /></label><label className="text-field"><span>备注</span><textarea value={form.notes} onChange={(event) => update("notes", event.target.value)} placeholder="任何想记下的内容" /></label></div>
-              </div>
-            )}
+            {form.category === "clothing" && <>
+              {nameAndPriceFields}
+              {sizeFields}
+              {styleFields}
+              <section className="category-fields"><h3>衣物组成</h3><p>先记单件或套装，需要时再补充内容。</p><div className="segmented"><button type="button" className={form.clothingMode === "single" ? "selected" : ""} onClick={() => update("clothingMode", "single")}>单件</button><button type="button" className={form.clothingMode === "set" ? "selected" : ""} onClick={() => update("clothingMode", "set")}>套装</button></div>{form.clothingMode === "set" && <><label className="text-field"><span>套装点数 <small>选填</small></span><input type="number" min="0" value={form.setCount} onChange={(event) => update("setCount", event.target.value)} placeholder="例如：5" /></label><label className="text-field"><span>套装内容 <small>选填</small></span><textarea value={form.setDescription} onChange={(event) => update("setDescription", event.target.value)} placeholder="例如：衬衫、半裙、领结、袜子" /></label></>}</section>
+            </>}
+            {form.category === "body" && <>
+              <section className="category-fields category-fields-first"><h3>先确认娃体身份</h3><p>娃社、型号和肤色通常比物品名称更容易回想。</p><div className="two-columns"><label className="text-field"><span>娃社 <small>选填</small></span><input value={form.maker} onChange={(event) => update("maker", event.target.value)} placeholder="例如：龙魂" /></label><label className="text-field"><span>型号 <small>选填</small></span><input value={form.model} onChange={(event) => update("model", event.target.value)} /></label></div><label className="text-field"><span>肤色 <small>选填</small></span><input value={form.skinTone} onChange={(event) => update("skinTone", event.target.value)} /></label></section>
+              {sizeFields}
+              {priceOnlyField}
+            </>}
+            {form.category === "head" && <>
+              <section className="category-fields category-fields-first"><h3>先确认娃头身份</h3><p>娃社、名称和肤色放在一起，查找与搭配都更直接。</p><div className="two-columns"><label className="text-field"><span>娃社 <small>选填</small></span><input value={form.maker} onChange={(event) => update("maker", event.target.value)} /></label><label className="text-field"><span>名称 <small>选填</small></span><input value={form.sculptName} onChange={(event) => update("sculptName", event.target.value)} /></label></div><label className="text-field"><span>肤色 <small>选填</small></span><input value={form.skinTone} onChange={(event) => update("skinTone", event.target.value)} /></label></section>
+              {sizeFields}
+              {priceOnlyField}
+            </>}
+            {form.category === "accessory" && <>
+              <section className="category-fields category-fields-first"><h3>先确认配件类型</h3><p>按用途记录，之后找眼珠、假发或鞋会更快。</p><label className="text-field"><span>配件类型 <small>选填</small></span><select value={form.accessoryType} onChange={(event) => update("accessoryType", event.target.value)}><option value="">请选择</option>{["假发", "眼珠", "鞋", "首饰", "道具", "包", "其他"].map((value) => <option key={value}>{value}</option>)}</select></label>{form.accessoryType === "其他" && <label className="text-field"><span>具体是什么 <small>选填</small></span><input value={form.accessoryTypeOther} onChange={(event) => update("accessoryTypeOther", event.target.value)} placeholder="例如：支架、家具、收纳包" /></label>}</section>
+              {sizeFields}
+              {styleFields}
+              {nameAndPriceFields}
+            </>}
+            <section className="common-details">
+              <h3>购买与备注</h3><p>最后补充购买线索，不影响快速保存。</p>
+              <div className={`purchase-fields ${(form.category === "body" || form.category === "head") ? "identity-purchase" : ""}`}><label className="text-field"><span>购买渠道 <small>选填</small></span><select value={form.purchaseChannel} onChange={(event) => update("purchaseChannel", event.target.value)}><option value="">请选择</option>{["淘宝", "微店", "小红书", "闲鱼"].map((value) => <option key={value}>{value}</option>)}</select></label>{form.category !== "body" && form.category !== "head" && <label className="text-field"><span>品牌或店铺 <small>选填</small></span><input value={form.brandOrShop} onChange={(event) => update("brandOrShop", event.target.value)} placeholder="工作室或店铺" /></label>}</div>
+              {form.status === "received" && <label className="text-field compact-date"><span>收货日期 <small>选填</small></span><input type="date" value={form.receivedDate} onChange={(event) => update("receivedDate", event.target.value)} /></label>}
+              <label className="text-field"><span>备注 <small>选填</small></span><textarea value={form.notes} onChange={(event) => update("notes", event.target.value)} placeholder="任何想记下的内容" /></label>
+            </section>
           </div>
           <div className="form-bottom-space"></div>
           <div className="sticky-save"><div className="autosave-indicator"><span className={saveState}></span>{editingId ? "编辑模式" : saveState === "saving" ? "正在保存草稿…" : saveState === "saved" ? "草稿已保存" : "离开后可恢复草稿"}</div><div><button className="secondary-button" onClick={() => saveItem(true)}>保存并继续添加</button><button className="primary-button" onClick={() => saveItem(false)}>保存</button></div></div>
@@ -692,15 +790,16 @@ export default function Home() {
               <div className="detail-kicker"><span>{CATEGORY[selected.category].label}</span><i>·</i><span>{STATUS[selected.status]}</span></div>
               <h1>{selected.name}</h1>
               {selected.status === "balance_due" && getBalanceCountdown(selected.balanceDueDate) && <div className="detail-countdown">{getBalanceCountdown(selected.balanceDueDate)}</div>}
-              <div className="detail-tags">{selected.sizeTags.map((tag) => <span key={tag}>{tag}</span>)}{selected.styleTags.map((tag) => <span key={tag}>{tag}</span>)}</div>
+              <div className="detail-tags">{selected.sizeTags.map((tag) => <span key={tag}>{tag}</span>)}{(selected.category === "clothing" || selected.category === "accessory") && selected.styleTags.map((tag) => <span key={tag}>{tag}</span>)}</div>
               {selected.price !== undefined && <div className="detail-price"><small>购入价格</small><strong>¥ {selected.price.toLocaleString("zh-CN")}</strong></div>}
               <dl className="detail-list">
-                {selected.brandOrShop && <><dt>品牌 / 店铺</dt><dd>{selected.brandOrShop}</dd></>}
+                {selected.purchaseChannel && <><dt>购买渠道</dt><dd>{selected.purchaseChannel}</dd></>}
+                {selected.brandOrShop && selected.category !== "body" && selected.category !== "head" && <><dt>品牌 / 店铺</dt><dd>{selected.brandOrShop}</dd></>}
                 {selected.maker && <><dt>娃社</dt><dd>{selected.maker}</dd></>}
-                {selected.model && <><dt>型号</dt><dd>{selected.model}</dd></>}
-                {selected.sculptName && <><dt>头雕名称</dt><dd>{selected.sculptName}</dd></>}
+                {selected.model && selected.model !== selected.name && <><dt>型号</dt><dd>{selected.model}</dd></>}
+                {selected.sculptName && selected.sculptName !== selected.name && <><dt>名称</dt><dd>{selected.sculptName}</dd></>}
                 {selected.skinTone && <><dt>肤色</dt><dd>{selected.skinTone}</dd></>}
-                {selected.accessoryType && <><dt>配件类型</dt><dd>{selected.accessoryType}</dd></>}
+                {selected.accessoryType && <><dt>配件类型</dt><dd>{selected.accessoryType === "其他" && selected.accessoryTypeOther ? selected.accessoryTypeOther : selected.accessoryType}</dd></>}
                 {selected.balanceAmount !== undefined && <><dt>需补尾款</dt><dd>¥ {selected.balanceAmount.toLocaleString("zh-CN")}</dd></>}
                 {selected.balanceDueDate && <><dt>补款截止</dt><dd>{selected.balanceDueDate}</dd></>}
                 {selected.estimatedShipping && <><dt>预计出货</dt><dd>{selected.estimatedShipping}</dd></>}
@@ -721,14 +820,18 @@ export default function Home() {
   );
 }
 
-function TagSelector({ title, mode, form, options, onToggle, onOpen }: { title: string; mode: "size" | "style"; form: FormState; options: string[]; onToggle: (type: "size" | "style", tag: string) => void; onOpen: () => void }) {
+function TagSelector({ title, mode, form, options, onToggle, onDelete }: { title: string; mode: "size" | "style"; form: FormState; options: string[]; onToggle: (type: "size" | "style", tag: string) => void; onDelete: (type: "size" | "style", tag: string) => void }) {
   const selected = mode === "size" ? form.sizeTags : form.styleTags;
-  return <div className="tag-field" onClick={onOpen}><div className="tag-heading"><label className="field-label">{title}</label><small>可多选</small></div><div className="tag-list">{Array.from(new Set(options)).map((tag) => <button type="button" key={tag} className={selected.includes(tag) ? "selected" : ""} onClick={() => onToggle(mode, tag)}>{selected.includes(tag) ? "✓ " : ""}{tag}</button>)}</div></div>;
+  return <div className="tag-field"><div className="tag-heading"><label className="field-label">{title}</label><small>可多选，点 × 删除标签</small></div><div className="tag-list">{Array.from(new Set(options)).map((tag) => <div className={`tag-chip ${selected.includes(tag) ? "selected" : ""}`} key={tag}><button className="tag-toggle" type="button" onClick={() => onToggle(mode, tag)}>{selected.includes(tag) ? "✓ " : ""}{tag}</button><button className="tag-delete" type="button" aria-label={`删除${title}标签“${tag}”`} onClick={() => onDelete(mode, tag)}>×</button></div>)}</div></div>;
+}
+
+function TagCreateField({ label, value, onChange, onCreate, emphasized = false }: { label: string; value: string; onChange: (value: string) => void; onCreate: () => void; emphasized?: boolean }) {
+  return <div className={`tag-create-row ${emphasized ? "emphasized" : ""}`}><span>{label}</span><div><input value={value} onChange={(event) => onChange(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); onCreate(); } }} placeholder={emphasized ? "例如：森系、蒸汽朋克、洛丽塔" : "输入标签名称"} aria-label={label} /><button type="button" onClick={onCreate} disabled={!value.trim()}>添加</button></div></div>;
 }
 
 function ItemGrid({ items, onOpen }: { items: Item[]; onOpen: (item: Item) => void }) {
   return <div className="item-grid">{items.map((item) => {
     const cover = item.images.find((image) => image.id === item.coverImageId) ?? item.images[0];
-    return <button className="item-card" key={item.id} onClick={() => onOpen(item)}><div className={`card-image category-bg-${item.category}`}>{cover ? <img src={cover.dataUrl} alt={item.name} /> : <><span>{CATEGORY[item.category].short}</span><small>WARDROBE ARCHIVE</small></>}<i>{CATEGORY[item.category].label}</i></div><div className="card-content"><div className="card-meta"><span>{STATUS[item.status]}</span>{item.status === "balance_due" && getBalanceCountdown(item.balanceDueDate) && <b>{getBalanceCountdown(item.balanceDueDate)}</b>}</div><h3>{item.name}</h3><div className="card-tags">{item.sizeTags.slice(0, 1).map((tag) => <span key={tag}>{tag}</span>)}{item.styleTags.slice(0, 2).map((tag) => <span key={tag}>{tag}</span>)}</div></div></button>;
+    return <button className="item-card" key={item.id} onClick={() => onOpen(item)}><div className={`card-image category-bg-${item.category}`}>{cover ? <img src={cover.dataUrl} alt={item.name} /> : <><span>{CATEGORY[item.category].short}</span><small>WARDROBE ARCHIVE</small></>}<i>{CATEGORY[item.category].label}</i></div><div className="card-content"><div className="card-meta"><span>{STATUS[item.status]}</span>{item.status === "balance_due" && getBalanceCountdown(item.balanceDueDate) && <b>{getBalanceCountdown(item.balanceDueDate)}</b>}</div><h3>{item.name}</h3><div className="card-tags">{item.sizeTags.slice(0, 1).map((tag) => <span key={tag}>{tag}</span>)}{(item.category === "clothing" || item.category === "accessory") && item.styleTags.slice(0, 2).map((tag) => <span key={tag}>{tag}</span>)}</div></div></button>;
   })}</div>;
 }
