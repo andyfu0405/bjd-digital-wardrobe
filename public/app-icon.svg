@@ -1,7 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none">
   <rect width="512" height="512" fill="#ffffff"/>
-  <rect x="44" y="44" width="424" height="424" fill="#edf5fb" stroke="#2f4f91" stroke-width="8"/>
-  <rect x="68" y="68" width="376" height="376" fill="#ffffff" stroke="#c7d7e1" stroke-width="2"/>
-  <text x="256" y="318" text-anchor="middle" fill="#1b1f23" font-family="Georgia, serif" font-size="224" font-style="italic">W</text>
-  <text x="256" y="388" text-anchor="middle" fill="#2f4f91" font-family="Arial, sans-serif" font-size="28" letter-spacing="9">BJD</text>
+  <path d="M104 142L360 104L408 134V414H104V142Z" stroke="#4167B1" stroke-width="9" stroke-linejoin="round"/>
+  <path d="M132 108H380V394H132V108Z" fill="#ffffff" stroke="#1B1F23" stroke-width="10"/>
+  <path d="M256 108V394" stroke="#1B1F23" stroke-width="8"/>
+  <path d="M159 161H226" stroke="#4167B1" stroke-width="7" stroke-linecap="round"/>
+  <path d="M192 161V179L168 202H216L192 179" stroke="#1B1F23" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M286 165H350M286 215H350M286 265H350" stroke="#1B1F23" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="238" cy="254" r="7" fill="#4167B1"/>
+  <circle cx="274" cy="254" r="7" fill="#4167B1"/>
+  <path d="M154 394V424M358 394V424" stroke="#1B1F23" stroke-width="10" stroke-linecap="round"/>
+  <path d="M132 108L160 82H350L380 108" stroke="#1B1F23" stroke-width="10" stroke-linejoin="round"/>
 </svg>

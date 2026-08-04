@@ -294,6 +294,8 @@ export default function Home() {
   const [draftDirty, setDraftDirty] = useState(false);
   const [draftRestored, setDraftRestored] = useState(false);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
+  const [nameError, setNameError] = useState("");
+  const [trialGuideVisible, setTrialGuideVisible] = useState(true);
   const [theme, setTheme] = useState<ThemeId>("cobalt");
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
   const [sizeTagInput, setSizeTagInput] = useState("");
@@ -322,8 +324,9 @@ export default function Home() {
       readLocal<string[]>("deleted-size-tags"),
       readLocal<string[]>("deleted-style-tags"),
       readLocal<ThemeId>("theme"),
+      readLocal<boolean>("trial-guide-dismissed"),
     ])
-      .then(([savedItems, draft, sizes, styles, deletedSizes, deletedStyles, savedTheme]) => {
+      .then(([savedItems, draft, sizes, styles, deletedSizes, deletedStyles, savedTheme, trialGuideDismissed]) => {
         const initial = savedItems ?? sampleItems();
         setItems(initial);
         if (!savedItems) writeLocal("items", initial);
@@ -337,6 +340,7 @@ export default function Home() {
         setDeletedSizeTags(deletedSizes ?? []);
         setDeletedStyleTags(deletedStyles ?? []);
         if (savedTheme && THEMES.some((item) => item.id === savedTheme)) setTheme(savedTheme);
+        setTrialGuideVisible(!trialGuideDismissed);
       })
       .finally(() => setHydrated(true));
   }, []);
@@ -397,7 +401,13 @@ export default function Home() {
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
+    if (key === "name" && String(value).trim()) setNameError("");
     if (!editingId) setDraftDirty(true);
+  }
+
+  function dismissTrialGuide() {
+    setTrialGuideVisible(false);
+    writeLocal("trial-guide-dismissed", true);
   }
 
   function changeStatus(status: Status) {
@@ -526,11 +536,15 @@ export default function Home() {
   }
 
   function saveItem(continueAdding = false) {
+    if (!form.name.trim()) {
+      setNameError("请填写名称后再保存");
+      setToast("名称是必填项");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
     const now = new Date().toISOString();
     const existing = editingId ? items.find((item) => item.id === editingId) : undefined;
-    const unnamedCount = items.filter((item) => item.category === form.category && item.name.startsWith(`未命名${CATEGORY[form.category].label}`)).length + 1;
-    const identityName = form.category === "body" ? form.model.trim() : form.category === "head" ? form.sculptName.trim() : "";
-    const name = identityName || form.name.trim() || `未命名${CATEGORY[form.category].label} ${String(unnamedCount).padStart(2, "0")}`;
+    const name = form.name.trim();
     const item: Item = {
       id: editingId ?? crypto.randomUUID(),
       name,
@@ -562,6 +576,7 @@ export default function Home() {
     };
     setItems((current) => existing ? current.map((value) => value.id === item.id ? item : value) : [item, ...current]);
     if (!editingId) writeLocal("draft", undefined);
+    if (!editingId) dismissTrialGuide();
     setDraftDirty(false);
     setDraftRestored(false);
     setToast(existing ? "修改已保存" : "物品已加入衣橱");
@@ -598,10 +613,6 @@ export default function Home() {
 
   const sizeOptions = [...customSizeTags, ...SIZE_TAGS].filter((tag) => !deletedSizeTags.includes(tag));
   const styleOptions = [...customStyleTags, ...STYLE_TAGS].filter((tag) => !deletedStyleTags.includes(tag));
-  const nameAndPriceFields = <div className="two-columns">
-    <label className="text-field"><span>名称 <small>留空自动命名</small></span><input value={form.name} onChange={(event) => update("name", event.target.value)} placeholder="例如：雾蓝学院套装" /></label>
-    <label className="text-field"><span>价格 <small>人民币</small></span><div className="price-input"><b>¥</b><input type="number" min="0" inputMode="decimal" value={form.price} onChange={(event) => update("price", event.target.value)} placeholder="0.00" /></div></label>
-  </div>;
   const priceOnlyField = <label className="text-field compact-date"><span>价格 <small>人民币</small></span><div className="price-input"><b>¥</b><input type="number" min="0" inputMode="decimal" value={form.price} onChange={(event) => update("price", event.target.value)} placeholder="0.00" /></div></label>;
   const sizeFields = <>
     <TagSelector title="尺寸" mode="size" form={form} options={sizeOptions} onToggle={toggleTag} onDelete={deleteTag} />
@@ -613,14 +624,14 @@ export default function Home() {
   </>;
 
   if (!hydrated) {
-    return <main className="loading-screen"><div className="loading-mark">W</div><p>正在打开你的数字衣橱…</p></main>;
+    return <main className="loading-screen"><div className="loading-mark"><img src="/app-icon.svg" alt="" /></div><p>正在打开你的数字衣橱…</p></main>;
   }
 
   return (
     <main className="app-shell" data-theme={theme}>
       <header className="topbar">
         <button className="brand" onClick={() => setView("home")} aria-label="返回首页">
-          <span className="brand-mark">W</span>
+          <span className="brand-mark"><img src="/app-icon.svg" alt="" /></span>
           <span><strong>BJD Wardrobe</strong><small>数字衣橱</small></span>
         </button>
         <nav className="desktop-nav" aria-label="主导航">
@@ -656,8 +667,8 @@ export default function Home() {
             </div>
           </section>
 
-          {items.some((item) => item.id.startsWith("sample-")) && (
-            <div className="sample-note"><span>试用提示</span> 已放入 4 件示例藏品，你可以直接编辑或删除它们。</div>
+          {trialGuideVisible && items.some((item) => item.id.startsWith("sample-")) && (
+            <div className="sample-note"><div><span>试用提示</span><p>已放入 4 件示例藏品，你可以直接编辑或删除它们。</p></div><button type="button" onClick={dismissTrialGuide}>知道了</button></div>
           )}
 
           <section className="section-block">
@@ -711,13 +722,18 @@ export default function Home() {
             <button className="back-button" onClick={() => setView(editingId ? "detail" : "home")}>← 返回</button>
             <p>{editingId ? "EDIT ITEM" : "QUICK ADD"}</p>
             <h1>{editingId ? "编辑藏品" : "添加一件物品"}</h1>
-            <span>只需要选择分类和状态。其他内容都可以以后再补。</span>
+            <span>填写名称，再选择分类和状态。其他内容都可以以后再补。</span>
           </div>
 
           {draftRestored && !editingId && <div className="draft-banner"><div><strong>已恢复上次的草稿</strong><span>你可以从离开的位置继续填写。</span></div><button onClick={() => { setForm(emptyForm()); setDraftDirty(false); setDraftRestored(false); writeLocal("draft", undefined); }}>舍弃草稿</button></div>}
 
           <div className="form-card">
-            <div className="form-section-title"><div><h2>必要信息</h2><p>只需两步即可保存</p></div><i>必填</i></div>
+            <div className="form-section-title"><div><h2>必要信息</h2><p>三项填完即可保存</p></div><i>必填</i></div>
+            <div className="field-group required-name-field">
+              <label className="field-label" htmlFor="item-name">名称 <b>必填</b></label>
+              <input id="item-name" className={nameError ? "field-error" : ""} value={form.name} onChange={(event) => update("name", event.target.value)} placeholder="例如：雾蓝学院套装" aria-invalid={Boolean(nameError)} aria-describedby={nameError ? "item-name-error" : undefined} />
+              {nameError && <small id="item-name-error" className="field-error-message">{nameError}</small>}
+            </div>
             <div className="field-group">
               <label className="field-label">分类 <b>必填</b></label>
               <div className="choice-grid category-choices">
@@ -745,7 +761,7 @@ export default function Home() {
               <input ref={fileRef} className="visually-hidden" type="file" accept="image/*" capture={undefined} multiple onChange={handleImages} />
             </div>
             {form.category === "clothing" && <>
-              {nameAndPriceFields}
+              {priceOnlyField}
               {sizeFields}
               {styleFields}
               <section className="category-fields"><h3>衣物组成</h3><p>先记单件或套装，需要时再补充内容。</p><div className="segmented"><button type="button" className={form.clothingMode === "single" ? "selected" : ""} onClick={() => update("clothingMode", "single")}>单件</button><button type="button" className={form.clothingMode === "set" ? "selected" : ""} onClick={() => update("clothingMode", "set")}>套装</button></div>{form.clothingMode === "set" && <><label className="text-field"><span>套装点数 <small>选填</small></span><input type="number" min="0" value={form.setCount} onChange={(event) => update("setCount", event.target.value)} placeholder="例如：5" /></label><label className="text-field"><span>套装内容 <small>选填</small></span><textarea value={form.setDescription} onChange={(event) => update("setDescription", event.target.value)} placeholder="例如：衬衫、半裙、领结、袜子" /></label></>}</section>
@@ -764,7 +780,7 @@ export default function Home() {
               <section className="category-fields category-fields-first"><h3>先确认配件类型</h3><p>按用途记录，之后找眼珠、假发或鞋会更快。</p><label className="text-field"><span>配件类型 <small>选填</small></span><select value={form.accessoryType} onChange={(event) => update("accessoryType", event.target.value)}><option value="">请选择</option>{["假发", "眼珠", "鞋", "首饰", "道具", "包", "其他"].map((value) => <option key={value}>{value}</option>)}</select></label>{form.accessoryType === "其他" && <label className="text-field"><span>具体是什么 <small>选填</small></span><input value={form.accessoryTypeOther} onChange={(event) => update("accessoryTypeOther", event.target.value)} placeholder="例如：支架、家具、收纳包" /></label>}</section>
               {sizeFields}
               {styleFields}
-              {nameAndPriceFields}
+              {priceOnlyField}
             </>}
             <section className="common-details">
               <h3>购买与备注</h3><p>最后补充购买线索，不影响快速保存。</p>
