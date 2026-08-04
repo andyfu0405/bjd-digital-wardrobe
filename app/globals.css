@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --paper: #ffffff; --paper-deep: #f7fafc; --ink: #1b1f23; --muted: #5e6a73;
+  --paper: #ffffff; --paper-deep: #ffffff; --ink: #1b1f23; --muted: #5e6a73;
   --line: #c7d7e1; --line-strong: #aabfcb; --white: #ffffff; --accent: #4167b1;
   --accent-dark: #2f4f91; --accent-soft: #edf4fb; --accent-pale: #f8fbfd; --accent-on: #ffffff;
   --clay: #a95745; --red: #a63f4b; --overlay: rgba(255, 255, 255, .97); --soft-white: #ffffff;
@@ -9,7 +9,7 @@
 }
 
 [data-theme="berry"] {
-  --paper: #ffffff; --paper-deep: #fdfaf6; --ink: #2c2529; --muted: #74636b;
+  --paper: #ffffff; --paper-deep: #ffffff; --ink: #2c2529; --muted: #74636b;
   --line: #e5d8dd; --line-strong: #cfb7c1; --white: #ffffff; --accent: #ef6078;
   --accent-dark: #9f294c; --accent-soft: #fceef2; --accent-pale: #fffafb; --accent-on: #ffffff;
   --clay: #c07b4d; --red: #a72d47; --overlay: rgba(255, 255, 255, .97); --soft-white: #ffffff;
@@ -17,7 +17,7 @@
 }
 
 [data-theme="cloud"] {
-  --paper: #ffffff; --paper-deep: #f7f8fa; --ink: #172036; --muted: #606a7b;
+  --paper: #ffffff; --paper-deep: #ffffff; --ink: #172036; --muted: #606a7b;
   --line: #cbd1da; --line-strong: #adb5c2; --white: #ffffff; --accent: #78849b;
   --accent-dark: #33415f; --accent-soft: #edf0f4; --accent-pale: #fafbfc; --accent-on: #ffffff;
   --clay: #9a6d66; --red: #9d4650; --overlay: rgba(255, 255, 255, .97); --soft-white: #ffffff;
@@ -25,7 +25,7 @@
 }
 
 [data-theme="mint"] {
-  --paper: #ffffff; --paper-deep: #f7fbfa; --ink: #234143; --muted: #567071;
+  --paper: #ffffff; --paper-deep: #ffffff; --ink: #234143; --muted: #567071;
   --line: #bdd8d5; --line-strong: #94beb9; --white: #ffffff; --accent: #65bfbb;
   --accent-dark: #2f7775; --accent-soft: #eaf7f6; --accent-pale: #f8fcfb; --accent-on: #ffffff;
   --clay: #bd6b2f; --red: #a54843; --overlay: rgba(255, 255, 255, .97); --soft-white: #ffffff;
@@ -85,16 +85,17 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .theme-popover > button:hover, .theme-popover > button.selected { background: var(--accent-pale); }
 .theme-popover b, .theme-popover small { display: block; }.theme-popover b { font-size: 13px; }.theme-popover small { margin-top: 3px; color: var(--muted); font-size: 10px; }.theme-popover em { color: var(--accent-dark); font-size: 10px; font-style: normal; }
 .theme-preview { height: 38px; display: grid; grid-template-columns: 1.3fr 1fr 1fr; overflow: hidden; border: 1px solid rgba(27,31,35,.13); }.theme-preview i { display: block; }
-.theme-preview-cobalt i:nth-child(1) { background: #4167b1; }.theme-preview-cobalt i:nth-child(2) { background: #def0f9; }.theme-preview-cobalt i:nth-child(3) { background: #1b1f23; }
-.theme-preview-berry i:nth-child(1) { background: #ef6078; }.theme-preview-berry i:nth-child(2) { background: #f9f7ea; }.theme-preview-berry i:nth-child(3) { background: #c689aa; }
-.theme-preview-cloud i:nth-child(1) { background: #78849b; }.theme-preview-cloud i:nth-child(2) { background: #eceef2; }.theme-preview-cloud i:nth-child(3) { background: #172036; }
-.theme-preview-mint i:nth-child(1) { background: #65bfbb; }.theme-preview-mint i:nth-child(2) { background: #d5eff0; }.theme-preview-mint i:nth-child(3) { background: #eeb67a; }
+.theme-preview-cobalt i:nth-child(1) { background: #4167b1; }.theme-preview-cobalt i:nth-child(2) { background: #ffffff; }.theme-preview-cobalt i:nth-child(3) { background: #1b1f23; }
+.theme-preview-berry i:nth-child(1) { background: #ef6078; }.theme-preview-berry i:nth-child(2) { background: #ffffff; }.theme-preview-berry i:nth-child(3) { background: #c689aa; }
+.theme-preview-cloud i:nth-child(1) { background: #78849b; }.theme-preview-cloud i:nth-child(2) { background: #ffffff; }.theme-preview-cloud i:nth-child(3) { background: #172036; }
+.theme-preview-mint i:nth-child(1) { background: #65bfbb; }.theme-preview-mint i:nth-child(2) { background: #ffffff; }.theme-preview-mint i:nth-child(3) { background: #eeb67a; }
 
 .hero { min-height: 480px; display: grid; grid-template-columns: 1fr 310px; align-items: center; gap: 60px; padding: 72px 7% 62px; border-bottom: 1px solid var(--line); }
 .eyebrow, .section-heading p, .form-intro > p, .list-title > p { color: var(--accent-dark); font: 11px Georgia, serif; letter-spacing: .22em; margin: 0 0 22px; }
 .hero h1 { margin: 0; font-family: Georgia, "Songti SC", serif; font-size: clamp(50px, 6.4vw, 84px); line-height: 1.06; letter-spacing: -.045em; font-weight: 400; }
 .hero h1 em { color: var(--accent-dark); font-weight: 400; }
 .hero-copy { max-width: 490px; margin: 26px 0 30px; color: var(--muted); line-height: 1.9; }
+.hero-copy span { display: block; }
 .hero-actions { display: flex; align-items: center; gap: 28px; }
 .collection-stamp { justify-self: center; width: 230px; height: 290px; display: flex; flex-direction: column; justify-content: center; align-items: center; border: 1px solid var(--line-strong); position: relative; background: var(--soft-white); }
 .collection-stamp::before, .collection-stamp::after { content: ""; position: absolute; background: var(--paper); }

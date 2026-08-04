@@ -656,7 +656,7 @@ export default function Home() {
             <div>
               <p className="eyebrow">MY COLLECTION · 本机保存</p>
               <h1>把喜欢的，<br /><em>好好收藏。</em></h1>
-              <p className="hero-copy">一个安静、轻盈的 BJD 数字衣橱。随手记下新到的衣物、娃体、娃头与配件。</p>
+              <p className="hero-copy"><span>一个安静、轻盈的 BJD 数字衣橱。</span><span>随手记下新到的衣物、娃体、娃头与配件。</span></p>
               <div className="hero-actions">
                 <button className="primary-button" onClick={() => startNew({ preserve: draftDirty })}>添加一件物品 <span>→</span></button>
                 {draftDirty && <button className="text-button" onClick={() => startNew({ preserve: true })}>继续编辑草稿</button>}
